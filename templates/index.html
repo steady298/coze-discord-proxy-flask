@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <canvas id="canvas-basic"></canvas> 
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线GPT4</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked@3.0.7/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/styles/default.min.css">
+    <script src="https://npm.elemecdn.com/granim@2.0.0/dist/granim.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/highlight.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            
+        }
+    
+        
+        #canvas-basic {
+            position: fixed;
+            display: block;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            z-index: -999;
+        }
+        #chatContainer {
+            width: 80%;
+            max-width: 800px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+    
+        #chatBox {
+        /* 增加高度至500px或更多，根据需要调整 */
+        height: 500px;
+        padding: 20px;
+        overflow-y: scroll;
+        border-bottom: 1px solid #ccc;
+    }
+    
+        #chatForm {
+            display: flex;
+            background-color: #f3f3f3;
+            padding: 10px;
+        }
+    
+        #content {
+            flex-grow: 1;
+            padding: 12px;
+            margin-right: 10px;
+            border: 2px solid #ddd;
+            border-radius: 20px;
+            outline: none;
+        }
+    
+        #sendButton {
+            background-color: #5cb85c;
+            color: #fff;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+    
+        #sendButton:hover {
+            background-color: #4cae4c;
+        }
+    
+        #loading {
+            display: none;
+            text-align: center;
+            padding: 10px;
+            color: #555;
+        }
+        /* 其他样式 */
+
+/* 页脚样式 */
+#footer {
+    text-align: center;
+    padding: 20px;
+    background-color: #f3f3f3; /* 页脚背景色 */
+    color: #555; /* 文本颜色 */
+    width: 100%;
+    position: absolute;
+    bottom: 0;
+}
+
+#footer a {
+    color: #2193b0; /* 链接颜色 */
+    text-decoration: none; /* 移除下划线 */
+}
+
+#footer a:hover {
+    text-decoration: underline; /* 鼠标悬停时下划线 */
+}
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #e7e7e7;
+            border-radius: 15px;
+            width: fit-content;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+    
+        .message p {
+            margin: 0;
+        }
+    
+        .code-container {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 5px;
+            background-color: #ffffff;
+        }
+    
+        /* Style for message from ‘你' */
+        .message.you {
+            background-color: #dcf8c6;
+            align-self: flex-end;
+        }
+    
+        /* Style for message from ‘机器人' */
+        .message.bot {
+            background-color: #e5e5ea;
+            align-self: flex-start;
+        }
+        .loader {
+            border: 5px solid #f3f3f3; /* 使用浅灰色作为边框颜色 */
+            border-top: 5px solid #3498db; /* 使用蓝色表示加载动画 */
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 2s linear infinite; /* 旋转动画 */
+        }
+        
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+    </style>
+</head>
+<body>
+    
+
+    <div id="chatContainer">
+        <div id="chatBox">
+            <h2>GPT4_Turbo_128K</h2>
+        </div>
+
+        <form id="chatForm">
+            <input type="text" id="content" name="content" placeholder="Type your message..." required>
+            <button type="button" id="sendButton" onclick="sendMessage()">Send</button>
+            <div id="loading"><div class="loader"></div></div>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            hljs.initHighlightingOnLoad();
+        });
+
+        
+        function sendMessage() {
+            var channelID = "1200657859738878085";
+            var content = document.getElementById("content").value;
+
+            var data = {
+                "channelID": channelID,
+                "stream": false,
+                "content": content
+            };
+
+            var loadingDiv = document.getElementById("loading");
+            loadingDiv.style.display = "block";
+
+            var chatBox = document.getElementById("chatBox");
+            chatBox.innerHTML += `<div class="message"><p><strong>你:</strong> ${content}</p></div>`;
+
+            fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                var botResponse = marked(data.data.content);
+                chatBox.innerHTML += `
+                    <div class="message">
+                        <p><strong>机器人:</strong></p>
+                        <div class="code-container">${botResponse}</div>
+                    </div>
+                `;
+
+                document.querySelectorAll('.code-container pre code').forEach((block) => {
+                    hljs.highlightBlock(block);
+                });
+            })
+            .catch(error => {
+                console.error('错误:', error);
+            })
+            .finally(() => {
+                loadingDiv.style.display = "none";
+                document.getElementById("content").value = "";
+                chatBox.scrollTop = chatBox.scrollHeight;
+            });
+        }
+        document.getElementById("content").addEventListener("keypress", function(event) {
+        if (event.key === "Enter") {
+        event.preventDefault(); // 阻止默认行为，例如换行
+        sendMessage();
+            }
+        });
+        var granimInstance = new Granim({
+    element: '#canvas-basic',
+    direction: 'left-right',
+    isPausedWhenNotInView: true,
+    states : {
+        "default-state": {
+            gradients: [
+                ['#a18cd1', '#fbc2eb'],
+                 ['#fff1eb', '#ace0f9'],
+                 ['#d4fc79', '#96e6a1'],
+                 ['#a1c4fd', '#c2e9fb'],
+                 ['#a8edea', '#fed6e3'],
+                 ['#9890e3', '#b1f4cf'],
+                 ['#a1c4fd', '#c2e9fb'],
+                 ['#fff1eb', '#ace0f9']
+           
+            ]
+        }
+    }
+});
+    </script>
+</body>
+<footer id="footer">
+    <div class="copyright">
+        © 2024 Steady298版权所有.  <a href="http://steady298.com">个人主页</a> 
+    </div>
+</footer>
+</html>
